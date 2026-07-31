@@ -301,8 +301,7 @@ class MemoryScheduler():
 
                 buffer = ctxt.lookup(tensorName)
                 # JUNGVI: Buffer targeted by alias have to say alive as long as their "aliasers"
-                if hasattr(buffer, "_alias"):
-                    alias = buffer._alias
+                for alias in buffer.aliases:
                     if alias in tensorLifetimeMap.keys():
                         prevLifetime = tensorLifetimeMap[alias]
                         tensorLifetimeMap[alias] = tuple((prevLifetime[0], stepIdx))
@@ -369,7 +368,7 @@ class MemoryScheduler():
                     cost = wordCost * c.multiBufferCoefficient
 
                     # SCHEREMO: In-place operator outputs are "costless" whenever their input is in the same pattern
-                    if hasattr(ctxt.lookup(node), "_alias") and ctxt.lookup(node)._alias in neighbors:
+                    if any(alias in neighbors for alias in ctxt.lookup(node).aliases):
                         cost = 0
 
             costVector.append(cost)
@@ -655,9 +654,9 @@ class MemoryScheduler():
                         continue
 
                     # SCHEREMO: Don't fully unroll aliases here - this is pattern-sensitive!
-                    if hasattr(_buffer, "_alias") and _buffer._alias in blockNames:
-                        _alias = ctxt.lookup(memoryBlock.name)._alias
-                        aliasedBlocks.append((memoryBlock, _alias))
+                    _parentsInBlocks = [a for a in _buffer.aliases if a in blockNames]
+                    if _parentsInBlocks:
+                        aliasedBlocks.append((memoryBlock, _parentsInBlocks[0]))
                         continue
 
                     upperIdx = blockIdx

@@ -336,17 +336,32 @@ class VariableBuffer():
         bool
             True if this VariableBuffer has any live aliases, False otherwise
         """
-        # Do a breadth-first search across the aliasing double-linked list
+        # `aliases` stores directed edges (child -> parent). Liveness needs
+        # undirected reachability over the alias graph, so we reconstruct the
+        # reverse (parent -> child) edges from all buffers and traverse both.
+        children: Dict[str, Set[str]] = {}
+        for buf in (*ctxt.globalObjects.values(), *ctxt.localObjects.values()):
+            if not isinstance(buf, VariableBuffer):
+                continue
+            for parent in buf.aliases:
+                children.setdefault(parent, set()).add(buf.name)
+
+        def neighbors(buf: VariableBuffer) -> Set[str]:
+            return set(buf.aliases) | children.get(buf.name, set())
+
+        # Breadth-first search across the (undirected) alias graph
         live = self._live
-        queue = set(self.aliases)
         visited = {self.name}
+        queue = neighbors(self)
         while len(queue) > 0:
-            next = queue.pop()
-            buffNext = ctxt.lookup(next)
+            nextName = queue.pop()
+            if nextName in visited:
+                continue
+            visited.add(nextName)
+            buffNext = ctxt.lookup(nextName)
             assert isinstance(buffNext, VariableBuffer)
             live |= buffNext._live
-            visited.add(next)
-            queue |= buffNext.aliases - visited
+            queue |= neighbors(buffNext) - visited
         return live
 
     @property
@@ -563,9 +578,13 @@ class NetworkContext():
         """
         seenAliases: Set[str] = set()
         alias = self.lookup(name)
-        while hasattr(alias, "_alias"):
+        # Follow the directed alias graph (child -> parent) until we reach a
+        # buffer with no parents, i.e. the underlying allocation (the root).
+        while alias.aliases:
             seenAliases.add(alias.name)
-            alias = self.lookup(alias._alias)
+            assert len(alias.aliases) == 1, \
+                f"dealiasBuffer: {alias.name} has multiple alias parents {alias.aliases}; ambiguous root"
+            alias = self.lookup(next(iter(alias.aliases)))
             assert alias.name not in seenAliases, "Circular aliasing detected!"
         return alias.name
 

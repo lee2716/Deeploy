@@ -30,8 +30,9 @@ class _ReshapeTemplate(NodeTemplate):
         bufferOut = ctxt.lookup(operatorRepresentation['data_out'])
         assert isinstance(bufferOut, VariableBuffer)
 
-        # Link aliases to each buffer
-        bufferIn.aliases.add(bufferOut.name)
+        # Record the aliasing as a directed edge (child -> parent): the reshape
+        # output is derived from the input and shares its memory. Liveness
+        # traverses this graph undirected; the tiler follows it towards the root.
         bufferOut.aliases.add(bufferIn.name)
 
         return ctxt, operatorRepresentation, []

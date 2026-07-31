@@ -59,6 +59,7 @@ This file contains the changelog for the Deeploy project. The changelog is divid
 - Aligned CLI commands across the project
 - Added @runwangdl as a code owner
 - Skip emitting duplicate `testInputVector` data for inputs placed in L3 (loaded at runtime from the readfs hex instead), reducing test binary size
+- Tiler (`TilerExtension`, `MemoryScheduler`, `dealiasBuffer`) now consumes the multi-valued `aliases` graph instead of the legacy single-valued `_alias`. `aliases` is stored as a directed edge (reshape output → input); `dealiasBuffer` follows it to the root and `has_live_aliases` traverses it undirected, so liveness behaviour is unchanged.
 
 ### Fixed
 - Fix Neureka's output-channels subtile size (in ConvTemplate) and Dense/DW/PW tile constraints
@@ -81,6 +82,7 @@ This file contains the changelog for the Deeploy project. The changelog is divid
 ### Removed
 - removed experimental `enable3x3` flag, from Neureka Engine. Now, 3x3 mode is enabled by default.
 - `testDMA.py` was an old test; we now have `test_dmas.py` instead.
+- Legacy single-valued `_alias` `VariableBuffer` attribute and the PULPOpen Reshape template workaround that set it (addresses #201 / #130).
 
 ## Release v0.2.1 (2026-02-05) [#158](https://github.com/pulp-platform/Deeploy/pull/158)
 

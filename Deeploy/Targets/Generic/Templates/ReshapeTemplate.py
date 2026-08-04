@@ -35,6 +35,12 @@ class _ReshapeTemplate(NodeTemplate):
         # traverses this graph undirected; the tiler follows it towards the root.
         bufferOut.aliases.add(bufferIn.name)
 
+        # Tiling still reads the legacy single-valued `_alias` attribute
+        # (TilerExtension / MemoryScheduler). Set it here so platforms that
+        # rely on Reshape pointer-passthrough during tiling don't each need
+        # to carry the same workaround in a subclass.
+        bufferOut._alias = bufferIn.name
+
         return ctxt, operatorRepresentation, []
 
 
